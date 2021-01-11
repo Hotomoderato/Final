@@ -14,8 +14,8 @@ old <- theme_set(theme_minimal() + theme(text = element_text(family = 'Arial', s
 # load and merge ----------------------------------------------------------------
 
 
-df1 <- read_csv('/Users/han/Desktop/CASA/CASA0005 Geog Inform Sys & Sci/0005data/犯罪数据 LSOA.csv')
-df2 <- read_csv('/Users/han/Desktop/CASA/CASA0005 Geog Inform Sys & Sci/0005data/可达性数据 LSOA.csv')
+df1 <- read_csv('/Users/han/Desktop/CASA/CASA0005 Geog Inform Sys & Sci/0005data/Crime LSOA.csv')
+df2 <- read_csv('/Users/han/Desktop/CASA/CASA0005 Geog Inform Sys & Sci/0005data/Accessibility LSOA.csv')
 df1$sum_2014 <- rowSums(df1[,(5:16)])
 df_lsoa <- df1 %>% group_by(LSOA_Code) %>% 
   summarise(n = n(),

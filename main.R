@@ -66,9 +66,7 @@ qqnorm(df_log$y,xlab = 'LSOA crime')
 # lambda <- b$x
 # lik <- b$y
 # bc <- cbind(lambda, lik)
-# bc[order(-lik),]#结果λ=-0.1818时lik值最大，因此λ取值-0.3
-# 
-
+# bc[order(-lik),]
 
 
 ggplot(df_log, aes(x = x)) + 
@@ -106,7 +104,7 @@ print(paste("pearson correlation coefficient：",round(cor_xy,2)))
 
 # linear regression --------------------------------------------------------------------
 
-# 初始模型
+
 reg1 <- lm(y~x,data = df_log_cleanned)
 
 ggplot(df_log_cleanned, aes(x = x ,y = y)) +
@@ -125,21 +123,21 @@ print(df_log_cleanned %>% mutate(y_pred = reg1$fitted.values,
 library(sandwich)
 library(stargazer)
 library(lmtest)
-#回归
+
 reg<-lm(y~x,data=df_log_cleanned)
-#求稳健标准误
+
 rse1<-vcovHAC(reg)
 rse2<-sqrt(diag(rse1))
-#工作台显示
+
 coeftest(reg,.vcov=rse1)
 stargazer(reg,se=list(NULL,rse2),out="reg.doc",type="text")
 # bootstrap -----------------------------------------------------------------
-# 定义预测模型
+
 train.control <- trainControl(method = "boot", number = 100)
-# 训练模型
+
 model <- train(y ~ x, data = df_log_cleanned, method = "lm",
                trControl = train.control)
-# print(paste('自举重采样最终模型',model$finalModel))
+# print(paste(model$finalModel))
 print(model)
 print('forecast result of Bootstrap resampling final model')
 print(df_log_cleanned %>% mutate(y_pred = reg1$fitted.values,
@@ -155,14 +153,14 @@ model_coef <- function(data, index){
 
 
 
-# residual&同方差性analysis -------------------------------------------------------------
+# residual&analysis -------------------------------------------------------------
 
 print(reg1$residuals)
 shapiro.test(reg1$residuals)
 par(mfrow=c(2,2))
 plot(reg1) # 4个图
 
-bptest(reg1,studentize = FALSE)# p小于0.05说明具有异方差性
+bptest(reg1,studentize = FALSE)# 
 
 
 # spatial corr -----------------------------------------------------------------
@@ -174,30 +172,29 @@ library(spdep)
 par(mfrow=c(1,1))
 
 
-# 读取地图数据
+
 shp_name <- "/Users/han/Desktop/CASA/CASA0007 QM/QM_Assessment/statistical-gis-boundaries-london/ESRI/LSOA_2004_London_Low_Resolution.shp"
 ncovr_sf <- st_read(shp_name)
 current_style <- tmap_style("col_blind")
-# plot(ncovr_sf) # 测试地图
+# plot(ncovr_sf) 
 
-# LSOA_CODE不能完全和ncovr_sf里面匹配上数据匹配上，后面想要做moran检验必选先在这里补全LSOA_CODE
+
 df_log_cleanned_new <- left_join(data.frame(ncovr_sf$LSOA_CODE),df_log_cleanned,by = c("ncovr_sf.LSOA_CODE"="z"))
 df_log_cleanned_new[is.na(df_log_cleanned_new)] <- 0
 reg2<- lm(y~x,data = df_log_cleanned_new) 
 
-# df_test 为增加了residuals和fitted value的dataframe
+
 df_test <- df_log_cleanned_new 
 df_test$res_reg2 <- residuals(reg2)
 df_test$fitted_reg2 <- fitted(reg2)
 
-# merge地图与原数据
+
 ncovr_sf <- inner_join(ncovr_sf, df_test, by = c("LSOA_CODE"="ncovr_sf.LSOA_CODE"))
-# 画图单独看犯罪数
+
 tm_shape(ncovr_sf) +
   tm_polygons("y", style="quantile", title="crimes")
 
-# 在一个图看犯罪数与可达性
-# # 因为我们的区域太密集了，将可达性和犯罪数都花在一个图里面，几乎什么都看不清
+
 # tm_shape(ncovr_sf) +
 #   tm_polygons("x",
 #               palette = "RdBu",title = 'PTAI') +
@@ -211,10 +208,8 @@ tm_shape(ncovr_sf_plot) +
   tm_shape(ncovr_sf_plot) + tm_dots(col ='crimes',palette = "Set3")
 
 
-# 看每个地区预测的残差
 ncovr_sf$sd_breaks <- scale(ncovr_sf$res_reg2)[,1]
 my_breaks <- c(-14,-3,-2,-1,1,2,3,14)
-# 蓝色与红色越深都代表预测误差越大
 tm_shape(ncovr_sf) + 
   tm_fill("sd_breaks", title = "Residuals", style = "fixed", breaks = my_breaks, palette = "-RdBu") +
   tm_borders(alpha = 0.1) +
@@ -231,12 +226,12 @@ w <- poly2nb(ncovr_sp, row.names=ncovr_sp$LSOA_CODE)
 wm <- nb2mat(neighbours = w, style='B')
 rwm <- mat2listw(wm, style='W')
 
-# moran检验，p<0.05代表存在空间自相关
+# moran
 lm.morantest(reg2, rwm, alternative="two.sided")
 
-# moran值
+# moran
 moran_value <- moran(ncovr_sp$y, rwm, n=length(rwm$neighbours), S0=Szero(rwm))
-print(moran_value$I) # 打印moran值
+print(moran_value$I) 
 localmoran_value <- localmoran(ncovr_sp$y, rwm)
 print(localmoran_value)
 # spatial clustering
@@ -247,10 +242,10 @@ for (i in 2:15) wss[i] <- sum(kmeans(mydata,centers=i)$withinss)
 plot(1:15, wss, type="b", xlab="Number of Clusters",ylab="Within groups sum of squares")
 
 
-# 用fpc包中的dbscan函数进行密度聚类
+
 dbscan_data_res <- dbscan(data.frame(ncovr_sf$x,ncovr_sf$y), eps=0.20, MinPts=6)
 kmeans_data_res<-kmeans(data.frame(ncovr_sf$x,ncovr_sf$y), centers=4)
-# 画出空间聚类结果
+
 tm_shape(ncovr_sf %>% mutate(dbscan_cluster = as.character(dbscan_data_res$cluster))
 ) +
   tm_polygons("dbscan_cluster", style="quantile", title="dbscan")
@@ -259,38 +254,38 @@ tm_shape(ncovr_sf %>% mutate(kmeans_cluster = as.character(kmeans_data_res$clust
 ) +
   tm_polygons("kmeans_cluster", style="quantile", title="kmeans")
 
-# 拉格朗日乘数选取替代模型
+
 lm.LMtests(reg2, rwm, test = c("LMerr","LMlag","RLMerr","RLMlag","SARMA"))
-#观测RLMerr和RLMlag统计量， 误差>滞后，所以选取空间误差模型
 
 
-# 误差模型 --------------------------------------------------------------------
 
-# 生成误差模型
+# SEM --------------------------------------------------------------------
+
+
 reg2_err <- errorsarlm(y ~ x, data=ncovr_sp, rwm)
 print(cor(reg2_err$y,reg2_err$fitted.values)^2) # 误差模型的R方
 print(sum(reg2_err$y-reg2_err$fitted.values)^2)
 summary(reg2_err)
 ncovr_sf_err <- ncovr_sf %>%  
   mutate(reg2_err_residuals = residuals(reg2_err))
-# 误差模型的残差在地图表示
+
 qtm(ncovr_sf_err, fill = "reg2_err_residuals")
 print('Error model forecast result')
 print(reg2_err$fitted.values)
-# 杜宾模型 --------------------------------------------------------------------
+# SDM --------------------------------------------------------------------
 library(splm)
 library('rgdal')
 library('spatialreg')
 library('texreg')
-# 杜宾模型
+
 sdm <- lagsarlm(y ~ x, ncovr_sp, rwm, Durbin=T)
-print(cor(sdm$y,sdm$fitted.values)^2) # 杜宾模型的R方
+print(cor(sdm$y,sdm$fitted.values)^2) # 
 ncovr_sf_Durbin <- ncovr_sf %>%  
   mutate(reg2_Durbin_residuals = residuals(sdm))
-# 杜宾模型的残差在地图表示
+# 
 qtm(ncovr_sf_Durbin, fill = "reg2_Durbin_residuals")
 print(summary(sdm))
-# 几个模型的数据比较
+# 
 screenreg(list(reg2, reg2_err, sdm),
           custom.model.names=c("OLS","SEM","SDM"))
 print(sum(sdm$y-sdm$fitted.values)^2)
@@ -301,26 +296,26 @@ library(spgwr)
 GWRbandwidth <- gwr.sel(y ~ x, 
                         data = ncovr_sp, 
                       adapt=T)
-# GWR模型训练
+# 
 gwr.model <-  gwr(y ~ x, 
                 data = ncovr_sp, 
                 adapt=GWRbandwidth, 
                 hatmatrix=TRUE, 
                 se.fit=TRUE)
 
-print(gwr.model$results) # 打印GWR模型概要
+print(gwr.model$results) # 
 print(gwr.model$SDF$localR2)
-print(cor(gwr.model$lm$y,gwr.model$SDF$pred)^2) # 打印GWR模型的R方 ,R方显著提升，大于了0.7
+print(cor(gwr.model$lm$y,gwr.model$SDF$pred)^2) #  
 print(summary(gwr.model))
 print(sum(sdm$y-sdm$fitted.values)^2)
 print(sum(gwr.model$lm$y-gwr.model$SDF$pred)^2)
-# gwr.model的残差分布图
+# 
 plot(x = gwr.model$lm$fitted.values,y = gwr.model$lm$residuals)
 results <- as.data.frame(gwr.model$SDF)
 names(results)
 ncovr_sf2 <- ncovr_sf %>%
   mutate(coefx = results$x)
-# 画出每个区域的回归系数
+# 
 tm_shape(ncovr_sf2) +
   tm_polygons(col = "coefx", 
               palette = "RdBu", 
@@ -339,7 +334,6 @@ print(gwr.model$SDF$pred)
 # #store significance results
 # ncovr_sf2 <- ncovr_sf2 %>%
 #   mutate(GWRxSig = sigTest)
-# # 大于0（蓝色）意味着区域变量x（可达性）是显著的
 # tm_shape(ncovr_sf2) +
 #   tm_polygons(col = "GWRxSig", 
 #               palette = "RdYlBu")
